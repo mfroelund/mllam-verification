@@ -2,6 +2,8 @@ import xarray as xr
 from loguru import logger
 
 from .config import Config
+from .operations.loading import load_xarray_dataset
+from .operations.saving import save_xarray_dataset
 from .operations.statistics import (
     diff_mean_per_time,
     diff_per_time_and_gridpoint,
@@ -18,6 +20,16 @@ def verify(config: Config):
         The configuration object
     """
     logger.info(config)
+    ds_reference = load_xarray_dataset(config.inputs.datasets.reference.path)
+
+    for ds_prediction in config.inputs.datasets.predictions:
+        ds_prediction = load_xarray_dataset(ds_prediction.path)
+        for method in config.methods:
+            error = method.object(
+                ds_reference, ds_prediction, method.include_persistence
+            )
+
+            save_xarray_dataset(error, config.output.path / method.name, format_="zarr")
 
 
 def calculate_global_error(
@@ -40,13 +52,20 @@ def calculate_global_error(
     -----------
     ds_reference: xr.Dataset
         The reference dataset to calculate global error against. Assumed to have
-        coordinates [time, grid_index]
+        coordinates [time, grid_index] or [time, x, y].
     ds_prediction: xr.Dataset
         The prediction dataset to calculate global error off. Assumed to have
-        coordinates [analysis_time, elapsed_forecast_duration, grid_index]
+        coordinates [analysis_time, elapsed_forecast_duration, grid_index] or
+        [analysis_time, elapsed_forecast_duration, x, y].
     include_persistence: bool
         Whether to calculate the error relative to persistence
     """
+    # Stack the x and y dimensions into a single grid index if necessary
+    if "x" in ds_prediction.dims and "y" in ds_prediction.dims:
+        ds_prediction = ds_prediction.stack(grid_index=["x", "y"])
+    if "x" in ds_reference.dims and "y" in ds_reference.dims:
+        ds_reference = ds_reference.stack(grid_index=["x", "y"])
+
     error = rmse_per_time(ds_prediction - ds_reference)
     # Rename the variable to "error"
     error = error.rename({"state": "error"})

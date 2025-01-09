@@ -3,14 +3,22 @@ from pathlib import Path
 from typing import List
 
 from pydantic.dataclasses import dataclass as pydantic_dataclass
+from pydantic.types import ImportString
 
 
 @pydantic_dataclass
 class Config:
     schema_version: str
     inputs: "Inputs"
-    methods: List[str]
+    methods: List["Method"]
     output: "Output"
+
+
+@pydantic_dataclass
+class Method:
+    object: ImportString
+    name: str
+    include_persistence: bool
 
 
 @pydantic_dataclass

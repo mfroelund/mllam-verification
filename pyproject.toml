@@ -11,6 +11,7 @@ dependencies = [
     "loguru>=0.7.2",
     "pydantic>=2.10.4",
     "matplotlib>=3.9.4",
+    "netCDF4>=1.7.2",
 ]
 requires-python = ">=3.9"
 readme = "README.md"
