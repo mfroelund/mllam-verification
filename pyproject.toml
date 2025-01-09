@@ -10,6 +10,7 @@ dependencies = [
     "zarr>=2.17.0",
     "loguru>=0.7.2",
     "pydantic>=2.10.4",
+    "matplotlib>=3.9.4",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

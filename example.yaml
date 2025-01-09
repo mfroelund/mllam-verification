@@ -2,12 +2,13 @@ schema_version: v0.1.0
 
 inputs:
   datasets:
-    initial:
-      path: /path/to/initial.zarr
-    target:
-      path: /path/to/target.zarr
-    prediction:
-      path: /path/to/prediction.zarr
+    reference:
+      path: /path/to/reference.zarr
+    predictions:
+      - prediction1:
+        path: /path/to/prediction1.zarr
+      - prediction2:
+        path: /path/to/prediction2.zarr
   variables:
     - 2t
     - 10u

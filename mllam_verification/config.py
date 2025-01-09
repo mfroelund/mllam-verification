@@ -34,9 +34,8 @@ class Inputs:
 
 @pydantic_dataclass
 class Datasets:
-    initial: Dataset
-    target: Dataset
-    prediction: Dataset
+    reference: Dataset
+    predictions: List[Dataset]
 
 
 @pydantic_dataclass
