@@ -26,7 +26,7 @@ def plot_error_timeline(ds_error: xr.Dataset):
     plt.title("Error vs Time")
     plt.legend()
     plt.grid(True)
-    plt.savefig("error_timeline.png")
+    # plt.savefig("error_timeline.png")
 
 
 def plot_error_map(ds_error: xr.Dataset):
@@ -65,4 +65,4 @@ def plot_error_map(ds_error: xr.Dataset):
                 vmax=ds_max[var],
             )
             axes.set_title(f"{var} at time {time.values}")
-        plt.savefig(f"error_map_time{time.values}.png")
+        # plt.savefig(f"error_map_time{time.values}.png")

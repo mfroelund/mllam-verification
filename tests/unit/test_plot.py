@@ -1,19 +1,56 @@
+import pytest
+import xarray as xr
 from mllam_verification.operations.plot import plot_error_map, plot_error_timeline
-from mllam_verification.verify import (
-    calculate_error_per_gridpoint,
-    calculate_global_error,
-)
 
 
-def test_plot_error_timeline(ds_reference_1D, ds_prediction_1D):
-    ds_error = calculate_global_error(
-        ds_reference_1D, ds_prediction_1D, include_persistence=True
+@pytest.fixture(name="global_error_with_persistence")
+def fixture_global_error_with_persistence() -> xr.Dataset:
+    """Fixture that returns test global error data with persistence."""
+
+    ds = xr.Dataset(
+        {
+            "error": (["time"], [0.1, 0.2, 0.3]),
+            "persistence_error": (["time"], [1.1, 1.2, 1.3]),
+        },
+        coords={"time": [0, 1, 2]},
     )
-    plot_error_timeline(ds_error)
+    # Add cell_methods attribute to data variables
+    ds["error"].attrs["cell_methods"] = "grid_index: method1"
+    ds["persistence_error"].attrs["cell_methods"] = "grid_index: method2"
+
+    return ds
 
 
-def test_plot_error_per_gridpoint(ds_reference_2D, ds_prediction_2D):
-    ds_error = calculate_error_per_gridpoint(
-        ds_reference_2D, ds_prediction_2D, include_persistence=True
+@pytest.fixture(name="error_per_gridpoint")
+def fixture_error_per_gridpoint() -> xr.Dataset:
+    """Fixture that returns test error per gridpoint data."""
+
+    ds = xr.Dataset(
+        {
+            "error": (
+                ["time", "x", "y"],
+                [[[0.1, 0.2], [0.3, 0.4]], [[0.5, 0.6], [0.7, 0.8]]],
+            ),
+            "persistence_error": (
+                ["time", "x", "y"],
+                [[[1.1, 1.2], [1.3, 1.4]], [[1.5, 1.6], [1.7, 1.8]]],
+            ),
+        },
+        coords={"time": [0, 1], "x": [0, 1], "y": [0, 1]},
     )
-    plot_error_map(ds_error)
+    # Add cell_methods attribute to data variables
+    ds["error"].attrs["cell_methods"] = "grid_index: method1"
+    ds["persistence_error"].attrs["cell_methods"] = "grid_index: method2"
+
+    return ds
+
+
+def test_plot_error_timeline(global_error_with_persistence):
+    """Test producing a timeline plot of the global error."""
+
+    plot_error_timeline(global_error_with_persistence)
+
+
+def test_plot_error_per_gridpoint(error_per_gridpoint):
+    """Test producing a 2D plot of the error per gridpoint."""
+    plot_error_map(error_per_gridpoint)

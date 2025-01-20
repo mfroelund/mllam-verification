@@ -17,10 +17,10 @@ inputs:
       step: PT3H
 
 methods:
-  - object: mllam_verification.verify.calculate_global_error
+  - object: mllam_verification.operations.statistics.calculate_global_error
     name: global_error
     include_persistence: true
-  - object: mllam_verification.verify.calculate_error_per_gridpoint
+  - object: mllam_verification.operations.statistics.calculate_error_per_gridpoint
     name: error_per_gridpoint
     include_persistence: true
 

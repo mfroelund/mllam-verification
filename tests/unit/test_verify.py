@@ -1,11 +1,11 @@
+"""Unit tests for the verify module."""
+
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
 import xarray as xr
-from numpy._typing._array_like import NDArray
-
 from mllam_verification.config import (
     Config,
     CoordRanges,
@@ -16,15 +16,16 @@ from mllam_verification.config import (
     Output,
     TimeRange,
 )
-from mllam_verification.verify import (
-    calculate_error_per_gridpoint,
-    calculate_global_error,
-    verify,
-)
+from mllam_verification.verify import verify
 
 
 @pytest.fixture(name="config", scope="module")
 def fixture_config():
+    """Fixture for the configuration.
+
+    The configuration is created with a temporary directory for input and
+    output data.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         config = Config(
             schema_version="v0.1.0",
@@ -46,12 +47,12 @@ def fixture_config():
             ),
             methods=[
                 Method(
-                    object="mllam_verification.verify.calculate_global_error",
+                    object="mllam_verification.operations.statistics.calculate_global_error",
                     name="global_error",
                     include_persistence=True,
                 ),
                 Method(
-                    object="mllam_verification.verify.calculate_error_per_gridpoint",
+                    object="mllam_verification.operations.statistics.calculate_error_per_gridpoint",
                     name="error_per_gridpoint",
                     include_persistence=True,
                 ),
@@ -61,24 +62,28 @@ def fixture_config():
         yield config
 
 
-@pytest.fixture(name="ds_reference_2D_temp")
-def fixture_ds_reference_2D_temp(ds_reference_2D: xr.Dataset, config: Config):
-    ds_reference_2D.to_zarr(config.inputs.datasets.reference.path)
+@pytest.fixture(name="ds_reference_2d_temp")
+def fixture_ds_reference_2d_temp(ds_reference_2d: xr.Dataset, config: Config):
+    """Fixture that saves the reference dataset saved to temp dir on disk."""
+    ds_reference_2d.to_zarr(config.inputs.datasets.reference.path)
 
 
-@pytest.fixture(name="ds_prediction_2D_temp")
-def fixture_ds_prediction_2D_temp(ds_prediction_2D: xr.Dataset, config: Config):
-    ds_prediction_2D.to_zarr(config.inputs.datasets.predictions[0].path)
+@pytest.fixture(name="ds_prediction_2d_temp")
+def fixture_ds_prediction_2d_temp(ds_prediction_2d: xr.Dataset, config: Config):
+    """Fixture that saves the prediction dataset saved to temp dir on disk."""
+    ds_prediction_2d.to_zarr(config.inputs.datasets.predictions[0].path)
 
 
 class TestVerify:
+    """Tests of the verify function"""
 
-    @pytest.mark.usefixtures("ds_reference_2D_temp")
-    @pytest.mark.usefixtures("ds_prediction_2D_temp")
+    @pytest.mark.usefixtures("ds_reference_2d_temp")
+    @pytest.mark.usefixtures("ds_prediction_2d_temp")
     def test_verify(
         self,
         config: Config,
     ):
+        """Test the verification of predictions against reference data."""
         verify(config)
 
         output_content = list(config.output.path.iterdir())
@@ -87,61 +92,3 @@ class TestVerify:
             "global_error.zarr not found in output directory. "
             f"Content of {config.output.path}: {output_content}"
         )
-
-
-class TestCalculateGlobalError:
-    def test_without_persistence(
-        self,
-        ds_reference_1D: xr.Dataset,
-        ds_prediction_1D: xr.Dataset,
-        time: NDArray,
-    ):
-        ds_error = calculate_global_error(ds_reference_1D, ds_prediction_1D)
-        assert "error" in ds_error
-        assert ds_error["error"].shape == (time.size,)
-        assert "cell_methods" in ds_error["error"].attrs
-
-    def test_with_persistence(
-        self,
-        ds_reference_1D: xr.Dataset,
-        ds_prediction_1D: xr.Dataset,
-        time: NDArray,
-    ):
-        ds_error = calculate_global_error(
-            ds_reference_1D, ds_prediction_1D, include_persistence=True
-        )
-        assert "error" in ds_error
-        assert ds_error["error"].shape == (time.size,)
-        assert "cell_methods" in ds_error["error"].attrs
-
-        assert "persistence_error" in ds_error
-        assert ds_error["persistence_error"].shape == (time.size,)
-        assert "cell_methods" in ds_error["persistence_error"].attrs
-
-
-class TestCalculateErrorPerGridpoint:
-    def test_without_persistence(
-        self,
-        ds_reference_2D: xr.Dataset,
-        ds_prediction_2D: xr.Dataset,
-    ):
-        ds_error = calculate_error_per_gridpoint(ds_reference_2D, ds_prediction_2D)
-        assert "error" in ds_error
-        assert ds_error["error"].shape == ds_reference_2D["state"].shape
-        assert "cell_methods" in ds_error["error"].attrs
-
-    def test_with_persistence(
-        self,
-        ds_reference_2D: xr.Dataset,
-        ds_prediction_2D: xr.Dataset,
-    ):
-        ds_error = calculate_error_per_gridpoint(
-            ds_reference_2D, ds_prediction_2D, include_persistence=True
-        )
-        assert "error" in ds_error
-        assert ds_error["error"].shape == ds_reference_2D["state"].shape
-        assert "cell_methods" in ds_error["error"].attrs
-
-        assert "persistence_error" in ds_error
-        assert ds_error["persistence_error"].shape == ds_reference_2D["state"].shape
-        assert "cell_methods" in ds_error["persistence_error"].attrs

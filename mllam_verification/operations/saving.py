@@ -1,11 +1,13 @@
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 import xarray as xr
 
 
 def save_xarray_dataset(
-    dataset: xr.Dataset, path: Path, format_: Optional[str] = "netcdf"
+    dataset: xr.Dataset,
+    path: Path,
+    format_: Optional[Literal["netcdf", "zarr"]] = "netcdf",
 ) -> None:
     """
     Save an xarray dataset to a file at the given path in the specified format_.
@@ -27,6 +29,6 @@ def save_xarray_dataset(
         dataset.to_zarr(path)
     else:
         raise ValueError(
-            f"Unsupported format: {format_}. Supported formats are 'netcdf', "
-            "'hdf5', and 'zarr'."
+            f"Unsupported format: {format_}. Supported formats are 'netcdf' "
+            "and 'zarr'."
         )
