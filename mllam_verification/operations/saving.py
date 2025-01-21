@@ -1,16 +1,20 @@
+"""Module to save xarray datasets to disk."""
+
 from pathlib import Path
 from typing import Literal, Optional
 
 import xarray as xr
+from loguru import logger
 
 
 def save_xarray_dataset(
     dataset: xr.Dataset,
     path: Path,
     format_: Optional[Literal["netcdf", "zarr"]] = "netcdf",
+    overwrite: bool = False,
 ) -> None:
     """
-    Save an xarray dataset to a file at the given path in the specified format_.
+    Save an xarray dataset to a file at the given path in the specified format.
 
     Parameters:
         dataset (xr.Dataset): The xarray dataset to save.
@@ -21,14 +25,16 @@ def save_xarray_dataset(
     Raises:
         ValueError: If the specified format is not supported.
     """
-    if format_ == "netcdf":
-        path = path.with_suffix(".nc")
-        dataset.to_netcdf(path)
-    elif format_ == "zarr":
-        path = path.with_suffix(".zarr")
-        dataset.to_zarr(path)
-    else:
-        raise ValueError(
-            f"Unsupported format: {format_}. Supported formats are 'netcdf' "
-            "and 'zarr'."
+    # Get path with suffix
+    path = path.with_suffix(".nc" if format_ == "netcdf" else ".zarr")
+
+    # If not explicitly requested, don't overwrite existing files
+    if path.exists() and not overwrite:
+        raise FileExistsError(
+            f"File {path} already exists. Set `overwrite=True` to overwrite."
         )
+
+    logger.info(f"Saving dataset to {path}")
+    if format_ == "netcdf":
+        dataset.to_netcdf(path, mode="w" if overwrite else "w-")
+    dataset.to_zarr(path, mode="w" if overwrite else "w-")

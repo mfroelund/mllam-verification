@@ -1,4 +1,4 @@
-"""Export functions to calculate statistics for a given Dataset."""
+"""Module to calculate statistics for a given Dataset."""
 
 from typing import List, Optional
 
@@ -41,15 +41,17 @@ def calculate_global_error(
     if "x" in ds_reference.dims and "y" in ds_reference.dims:
         ds_reference = ds_reference.stack(grid_index=["x", "y"])
 
+    # Calculate the error and rename the variable
     error = rmse_per_time(ds_prediction - ds_reference)
-    # Rename the variable to "error"
     error = error.rename({"state": "error"})
 
+    # Calculate the persistence error and merge with the error dataset
     if include_persistence:
         persistence = diff_mean_per_time(ds_reference)
         persistence_error = rmse_per_time(ds_prediction - persistence)
         persistence_error = persistence_error.rename({"state": "persistence_error"})
         error = xr.merge([error, persistence_error])
+
     return error
 
 
@@ -98,9 +100,8 @@ def calculate_error_per_gridpoint(
         # hence the minus sign.
         persistence_error = -diff_per_time_and_gridpoint(ds_reference)
         persistence_error = persistence_error.rename({"state": "persistence_error"})
-        ds_reference = ds_reference.rename({"state": "reference"})
-        ds_prediction = ds_prediction.rename({"state": "prediction"})
-        error = xr.merge([ds_reference, ds_prediction, error, persistence_error])
+        error = xr.merge([error, persistence_error])
+
     return error
 
 

@@ -12,6 +12,7 @@ dependencies = [
     "pydantic>=2.10.4",
     "matplotlib>=3.9.4",
     "netCDF4>=1.7.2",
+    "click>=8.1.8",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

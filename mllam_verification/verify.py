@@ -1,3 +1,5 @@
+"""Module with the main verification functions."""
+
 from loguru import logger
 
 from .config import Config
@@ -5,7 +7,7 @@ from .operations.loading import load_xarray_dataset
 from .operations.saving import save_xarray_dataset
 
 
-def verify(config: Config):
+def verify_prediction(config: Config, overwrite: bool):
     """Verify the prediction against the reference dataset.
 
     Parameters:
@@ -23,10 +25,9 @@ def verify(config: Config):
                 ds_reference, ds_prediction, method.include_persistence
             )
 
-            save_xarray_dataset(error, config.output.path / method.name, format_="zarr")
-
-
-# def plot_verification_results(config: Config):
-#     """Plot verification results for specified variables"""
-#     for method in config.methods:
-#         error = load_xarray_dataset(config.output.path / method.name)
+            save_xarray_dataset(
+                error,
+                config.output.path / method.name,
+                format_="zarr",
+                overwrite=overwrite,
+            )

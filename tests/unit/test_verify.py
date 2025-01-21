@@ -16,7 +16,7 @@ from mllam_verification.config import (
     Output,
     TimeRange,
 )
-from mllam_verification.verify import verify
+from mllam_verification.verify import verify_prediction
 
 
 @pytest.fixture(name="config", scope="module")
@@ -84,7 +84,7 @@ class TestVerify:
         config: Config,
     ):
         """Test the verification of predictions against reference data."""
-        verify(config)
+        verify_prediction(config)
 
         output_content = list(config.output.path.iterdir())
         # Assert on the content of the output directory

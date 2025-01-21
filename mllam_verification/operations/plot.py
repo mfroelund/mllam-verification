@@ -1,20 +1,22 @@
+"""Module with various plotting functions."""
+
 import math
-from typing import Hashable
+from typing import Generator, Hashable, Tuple
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import xarray as xr
 
 
-def plot_error_timeline(ds_error: xr.Dataset):
+def plot_error_timeline(ds_error: xr.Dataset) -> plt.Figure:
     """Plot the error vs time from the error dataset.
 
     Parameters:
     -----------
-    error_ds: xr.Dataset
+    ds_error: xr.Dataset
         The dataset containing the error with coordinates [time]
     """
-    plt.figure(figsize=(10, 5), constrained_layout=True)
+    fig = plt.figure(figsize=(10, 5), constrained_layout=True)
     for var in ds_error.data_vars:
         ds_error[var].plot.line(
             x="time",
@@ -26,18 +28,21 @@ def plot_error_timeline(ds_error: xr.Dataset):
     plt.title("Error vs Time")
     plt.legend()
     plt.grid(True)
-    # plt.savefig("error_timeline.png")
+
+    return fig
 
 
-def plot_error_map(ds_error: xr.Dataset):
+def plot_error_map(
+    ds_error: xr.Dataset,
+) -> Generator[Tuple[plt.Figure, xr.DataArray], None, None]:
     """Plot the error map from the error dataset.
 
     Parameters:
     -----------
-    error_ds: xr.Dataset
+    ds_error: xr.Dataset
         The dataset containing the error with coordinates [x, y]
     """
-
+    # Calculate the number of rows and columns for the grid
     num_vars = len(ds_error.data_vars)
     nrows = math.floor(math.sqrt(num_vars))  # Number of columns for the grid
     ncols = math.ceil(num_vars / nrows)  # Calculate the number of rows needed
@@ -46,12 +51,16 @@ def plot_error_map(ds_error: xr.Dataset):
     ds_max = ds_error.max()
     ds_min = ds_error.min()
 
+    # Loop over time and produce one plot per time
     var: Hashable
     time: xr.DataArray
     for time in ds_error["time"]:
+        # Prepare the figure
         fig = plt.figure(figsize=(10, 5 * nrows), constrained_layout=True)
         gs = gridspec.GridSpec(nrows, ncols, figure=fig)
         plt.suptitle("Error Map")
+
+        # Plot each variable in the dataset
         for i, var in enumerate(ds_error.data_vars):
             row = i // ncols
             col = i % ncols
@@ -65,4 +74,5 @@ def plot_error_map(ds_error: xr.Dataset):
                 vmax=ds_max[var],
             )
             axes.set_title(f"{var} at time {time.values}")
-        # plt.savefig(f"error_map_time{time.values}.png")
+
+        yield fig, time

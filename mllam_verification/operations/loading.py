@@ -1,3 +1,5 @@
+"""Module for loading xarray datasets from files."""
+
 from pathlib import Path
 
 import xarray as xr
