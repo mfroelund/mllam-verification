@@ -9,10 +9,19 @@ def fixture_global_error_with_persistence() -> xr.Dataset:
 
     ds = xr.Dataset(
         {
-            "error": (["time"], [0.1, 0.2, 0.3]),
-            "persistence_error": (["time"], [1.1, 1.2, 1.3]),
+            "error": (
+                ["elapsed_forecast_duration", "state_feature"],
+                [[0.1, 0.1], [0.2, 0.2], [0.3, 0.3]],
+            ),
+            "persistence_error": (
+                ["elapsed_forecast_duration", "state_feature"],
+                [[1.1, 1.1], [1.2, 1.2], [1.3, 1.3]],
+            ),
         },
-        coords={"time": [0, 1, 2]},
+        coords={
+            "elapsed_forecast_duration": [0, 1, 2],
+            "state_feature": ["feature1", "feature2"],
+        },
     )
     # Add cell_methods attribute to data variables
     ds["error"].attrs["cell_methods"] = "grid_index: method1"

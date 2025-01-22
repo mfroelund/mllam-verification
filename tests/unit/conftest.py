@@ -12,6 +12,7 @@ import xarray as xr
 from numpy._typing._array_like import NDArray
 
 DOMAIN_WIDTH = 100
+NFEATURES = 5
 MeshGrid = collections.namedtuple("MeshGrid", "x y")
 
 
@@ -53,18 +54,42 @@ def fixture_moving_gaussian_blob(
     )
 
 
+@pytest.fixture(name="moving_gaussian_blobs")
+def fixture_moving_gaussian_blobs(moving_gaussian_blob: NDArray):
+    """Fixture of a 4D array representing multiple moving Gaussian blobs.
+
+    Each blob is shifted by a random dx, dy and signifies an individual
+    state_feature.
+    """
+    return np.array(
+        [
+            np.roll(moving_gaussian_blob, (dx, dy), axis=(1, 2))
+            for dx, dy in np.random.randint(
+                -DOMAIN_WIDTH // 2, DOMAIN_WIDTH // 2, size=(NFEATURES, 2)
+            )
+        ]
+    ).transpose((1, 2, 3, 0))
+
+
 @pytest.fixture(name="ds_reference_1d")
 def fixture_ds_reference_1d(
-    elapsed_forecast_duration: NDArray, moving_gaussian_blob: NDArray
+    elapsed_forecast_duration: NDArray, moving_gaussian_blobs: NDArray
 ) -> xr.Dataset:
     """Fixture that returns Dataset with 1d moving gaussian blob reference data."""
-    data = moving_gaussian_blob.reshape((len(elapsed_forecast_duration) - 1, -1))
+    data = moving_gaussian_blobs.reshape(
+        (len(elapsed_forecast_duration) - 1, -1, NFEATURES)
+    )
     grid_index = np.arange(data.shape[1])
 
     return xr.Dataset(
         {
             "state": (
-                ["analysis_time", "elapsed_forecast_duration", "grid_index"],
+                [
+                    "analysis_time",
+                    "elapsed_forecast_duration",
+                    "grid_index",
+                    "state_feature",
+                ],
                 data[np.newaxis, ...],
             )
         },
@@ -72,6 +97,7 @@ def fixture_ds_reference_1d(
             "analysis_time": [elapsed_forecast_duration[0]],
             "elapsed_forecast_duration": elapsed_forecast_duration[1:],
             "grid_index": grid_index,
+            "state_feature": [f"feature{i}" for i in np.arange(NFEATURES)],
         },
     )
 
@@ -89,7 +115,17 @@ def fixture_ds_prediction_1d(ds_reference_1d: xr.Dataset) -> xr.Dataset:
     bias = 0
     data = ds_reference_1d["state"].values + noise + bias
     return xr.Dataset(
-        {"state": (["analysis_time", "elapsed_forecast_duration", "grid_index"], data)},
+        {
+            "state": (
+                [
+                    "analysis_time",
+                    "elapsed_forecast_duration",
+                    "grid_index",
+                    "state_feature",
+                ],
+                data,
+            )
+        },
         coords=ds_reference_1d.coords,
     )
 
@@ -97,15 +133,21 @@ def fixture_ds_prediction_1d(ds_reference_1d: xr.Dataset) -> xr.Dataset:
 @pytest.fixture(name="ds_reference_2d")
 def fixture_ds_reference_2d(
     elapsed_forecast_duration: NDArray,
-    moving_gaussian_blob: NDArray,
+    moving_gaussian_blobs: NDArray,
     meshgrid: MeshGrid,
 ) -> xr.Dataset:
     """Fixture that returns Dataset 2d moving gaussian blob reference data."""
     return xr.Dataset(
         {
             "state": (
-                ["analysis_time", "elapsed_forecast_duration", "x", "y"],
-                moving_gaussian_blob[np.newaxis, ...],
+                [
+                    "analysis_time",
+                    "elapsed_forecast_duration",
+                    "x",
+                    "y",
+                    "state_feature",
+                ],
+                moving_gaussian_blobs[np.newaxis, ...],
             )
         },
         coords={
@@ -113,6 +155,7 @@ def fixture_ds_reference_2d(
             "elapsed_forecast_duration": elapsed_forecast_duration[1:],
             "x": meshgrid.x[0, :],
             "y": meshgrid.y[:, 0],
+            "state_feature": [f"feature{i}" for i in np.arange(NFEATURES)],
         },
     )
 
@@ -128,6 +171,17 @@ def fixture_ds_prediction_2d(ds_reference_2d: xr.Dataset) -> xr.Dataset:
 
     data = ds_reference_2d["state"].values + noise  # + bias
     return xr.Dataset(
-        {"state": (["analysis_time", "elapsed_forecast_duration", "x", "y"], data)},
+        {
+            "state": (
+                [
+                    "analysis_time",
+                    "elapsed_forecast_duration",
+                    "x",
+                    "y",
+                    "state_feature",
+                ],
+                data,
+            )
+        },
         coords=ds_reference_2d.coords,
     )
