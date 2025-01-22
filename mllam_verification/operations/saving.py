@@ -33,8 +33,8 @@ def save_xarray_dataset(
         raise FileExistsError(
             f"File {path} already exists. Set `overwrite=True` to overwrite."
         )
-
     logger.info(f"Saving dataset to {path}")
     if format_ == "netcdf":
-        dataset.to_netcdf(path, mode="w" if overwrite else "w-")
-    dataset.to_zarr(path, mode="w" if overwrite else "w-")
+        dataset.to_netcdf(path)
+    else:
+        dataset.to_zarr(path)

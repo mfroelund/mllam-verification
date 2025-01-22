@@ -12,7 +12,7 @@ class TestSaveXarrayDataset:
     """Unit tests for the save_xarray_dataset function."""
 
     @pytest.mark.parametrize(
-        ["format_", "suffix"], (["netcdf", "nc"], ["zarr", "zarr"])
+        ["format_", "suffix"], [("netcdf", "nc"), ("zarr", "zarr")]
     )
     def test_save_xarray_dataset(
         self, ds_prediction_2d: xr.Dataset, format_: str, suffix: str

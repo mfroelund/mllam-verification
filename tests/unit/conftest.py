@@ -15,9 +15,9 @@ DOMAIN_WIDTH = 100
 MeshGrid = collections.namedtuple("MeshGrid", "x y")
 
 
-@pytest.fixture(name="time")
-def fixture_time():
-    """Fixture that returns a numpy array representing time steps."""
+@pytest.fixture(name="elapsed_forecast_duration")
+def fixture_elapsed_forecast_duration():
+    """Fixture that returns a numpy array representing elapsed_forecast_duration steps."""
     return np.arange(0, 10)
 
 
@@ -38,23 +38,41 @@ def fixture_gaussian_blob(meshgrid: MeshGrid):
 
 
 @pytest.fixture(name="moving_gaussian_blob")
-def fixture_moving_gaussian_blob(time: NDArray, gaussian_blob: NDArray):
+def fixture_moving_gaussian_blob(
+    elapsed_forecast_duration: NDArray, gaussian_blob: NDArray
+):
     """Fixture of a 3D array representing a moving Gaussian blob."""
-    step_size = DOMAIN_WIDTH // len(time)
+    step_size = DOMAIN_WIDTH // len(elapsed_forecast_duration)
     return np.array(
-        [np.roll(gaussian_blob, shift * step_size, axis=0) for shift in time]
+        [
+            np.roll(gaussian_blob, shift * step_size, axis=0)
+            for shift in elapsed_forecast_duration[
+                1:
+            ]  # Only produce data for forecast steps
+        ]
     )
 
 
 @pytest.fixture(name="ds_reference_1d")
-def fixture_ds_reference_1d(time: NDArray, moving_gaussian_blob: NDArray) -> xr.Dataset:
+def fixture_ds_reference_1d(
+    elapsed_forecast_duration: NDArray, moving_gaussian_blob: NDArray
+) -> xr.Dataset:
     """Fixture that returns Dataset with 1d moving gaussian blob reference data."""
-    data = moving_gaussian_blob.reshape((len(time), -1))
+    data = moving_gaussian_blob.reshape((len(elapsed_forecast_duration) - 1, -1))
     grid_index = np.arange(data.shape[1])
 
     return xr.Dataset(
-        {"state": (["time", "grid_index"], data)},
-        coords={"time": time, "grid_index": grid_index},
+        {
+            "state": (
+                ["analysis_time", "elapsed_forecast_duration", "grid_index"],
+                data[np.newaxis, ...],
+            )
+        },
+        coords={
+            "analysis_time": [elapsed_forecast_duration[0]],
+            "elapsed_forecast_duration": elapsed_forecast_duration[1:],
+            "grid_index": grid_index,
+        },
     )
 
 
@@ -67,22 +85,35 @@ def fixture_ds_prediction_1d(ds_reference_1d: xr.Dataset) -> xr.Dataset:
     noise = np.random.normal(0, 0.1, ds_reference_1d["state"].shape)
     # bias = np.linspace(-0.2, 0.2, ds_reference_1d["state"].shape[1])
     # bias = np.tile(bias, (ds_reference_1d["state"].shape[0], 1))
+
     bias = 0
     data = ds_reference_1d["state"].values + noise + bias
     return xr.Dataset(
-        {"state": (["time", "grid_index"], data)},
+        {"state": (["analysis_time", "elapsed_forecast_duration", "grid_index"], data)},
         coords=ds_reference_1d.coords,
     )
 
 
 @pytest.fixture(name="ds_reference_2d")
 def fixture_ds_reference_2d(
-    time: NDArray, moving_gaussian_blob: NDArray, meshgrid: MeshGrid
+    elapsed_forecast_duration: NDArray,
+    moving_gaussian_blob: NDArray,
+    meshgrid: MeshGrid,
 ) -> xr.Dataset:
     """Fixture that returns Dataset 2d moving gaussian blob reference data."""
     return xr.Dataset(
-        {"state": (["time", "x", "y"], moving_gaussian_blob)},
-        coords={"time": time, "x": meshgrid.x[0, :], "y": meshgrid.y[:, 0]},
+        {
+            "state": (
+                ["analysis_time", "elapsed_forecast_duration", "x", "y"],
+                moving_gaussian_blob[np.newaxis, ...],
+            )
+        },
+        coords={
+            "analysis_time": [elapsed_forecast_duration[0]],
+            "elapsed_forecast_duration": elapsed_forecast_duration[1:],
+            "x": meshgrid.x[0, :],
+            "y": meshgrid.y[:, 0],
+        },
     )
 
 
@@ -97,6 +128,6 @@ def fixture_ds_prediction_2d(ds_reference_2d: xr.Dataset) -> xr.Dataset:
 
     data = ds_reference_2d["state"].values + noise  # + bias
     return xr.Dataset(
-        {"state": (["time", "x", "y"], data)},
+        {"state": (["analysis_time", "elapsed_forecast_duration", "x", "y"], data)},
         coords=ds_reference_2d.coords,
     )

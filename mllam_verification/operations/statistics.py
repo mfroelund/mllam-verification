@@ -151,7 +151,7 @@ def compute_pipeline_statistic(
         # Get unit of the diff'ed array
         diff_unit_array: xr.DataArray = ds[diff_dim][1] - ds[diff_dim][0]
         diff_unit = diff_unit_array.values
-        if diff_dim == "time":
+        if diff_dim == "elapsed_forecast_duration":
             # Convert the diff unit to hours
             diff_unit = diff_unit.astype("timedelta64[h]")
         else:
@@ -293,7 +293,11 @@ def diff_mean_per_time(ds: xr.Dataset):
         xr.Dataset: Dataset with the computed statistical variables
     """
     return compute_pipeline_statistic(
-        ds, stats_op="mean", stats_dims="grid_index", diff_dim="time", n_diff_steps=1
+        ds,
+        stats_op="mean",
+        stats_dims="grid_index",
+        diff_dim="elapsed_forecast_duration",
+        n_diff_steps=1,
     )
 
 
@@ -304,7 +308,9 @@ def diff_per_time_and_gridpoint(ds: xr.Dataset) -> xr.Dataset:
     Returns:
         xr.Dataset: Dataset with the computed statistical variables
     """
-    return compute_pipeline_statistic(ds, diff_dim="time", n_diff_steps=1)
+    return compute_pipeline_statistic(
+        ds, diff_dim="elapsed_forecast_duration", n_diff_steps=1
+    )
 
 
 def diff_std(ds: xr.Dataset):

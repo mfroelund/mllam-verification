@@ -7,7 +7,7 @@ from .operations.loading import load_xarray_dataset
 from .operations.saving import save_xarray_dataset
 
 
-def verify_prediction(config: Config, overwrite: bool):
+def verify_prediction(config: Config, overwrite: bool = False):
     """Verify the prediction against the reference dataset.
 
     Parameters:

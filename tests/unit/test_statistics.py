@@ -15,30 +15,33 @@ class TestCalculateGlobalError:
         self,
         ds_reference_1d: xr.Dataset,
         ds_prediction_1d: xr.Dataset,
-        time: NDArray,
+        elapsed_forecast_duration: NDArray,
     ):
         """Test the calculation of global error without persistence."""
         ds_error = calculate_global_error(ds_reference_1d, ds_prediction_1d)
         assert "error" in ds_error
-        assert ds_error["error"].shape == (time.size,)
+        assert ds_error["error"].shape == (1, elapsed_forecast_duration.size - 1)
         assert "cell_methods" in ds_error["error"].attrs
 
     def test_with_persistence(
         self,
         ds_reference_1d: xr.Dataset,
         ds_prediction_1d: xr.Dataset,
-        time: NDArray,
+        elapsed_forecast_duration: NDArray,
     ):
         """Test the calculation of global error with persistence."""
         ds_error = calculate_global_error(
             ds_reference_1d, ds_prediction_1d, include_persistence=True
         )
         assert "error" in ds_error
-        assert ds_error["error"].shape == (time.size,)
+        assert ds_error["error"].shape == (1, elapsed_forecast_duration.size - 1)
         assert "cell_methods" in ds_error["error"].attrs
 
         assert "persistence_error" in ds_error
-        assert ds_error["persistence_error"].shape == (time.size,)
+        assert ds_error["persistence_error"].shape == (
+            1,
+            elapsed_forecast_duration.size - 1,
+        )
         assert "cell_methods" in ds_error["persistence_error"].attrs
 
 
