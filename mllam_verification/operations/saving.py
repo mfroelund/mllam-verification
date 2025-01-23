@@ -37,4 +37,4 @@ def save_xarray_dataset(
     if format_ == "netcdf":
         dataset.to_netcdf(path)
     else:
-        dataset.to_zarr(path)
+        dataset.to_zarr(path, mode="w" if overwrite else "w-")

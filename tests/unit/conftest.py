@@ -14,12 +14,41 @@ from numpy._typing._array_like import NDArray
 DOMAIN_WIDTH = 100
 NFEATURES = 5
 MeshGrid = collections.namedtuple("MeshGrid", "x y")
+FORECAST_LENGTH = 5
+NFORECASTS = 3
+
+
+@pytest.fixture(name="analysis_times")
+def fixture_analysis_times():
+    """Fixture that returns a numpy array representing analysis_times."""
+    return np.arange(0, NFORECASTS * (2 * FORECAST_LENGTH), 2 * FORECAST_LENGTH)
 
 
 @pytest.fixture(name="elapsed_forecast_duration")
 def fixture_elapsed_forecast_duration():
     """Fixture that returns a numpy array representing elapsed_forecast_duration steps."""
-    return np.arange(0, 10)
+    return np.arange(1, FORECAST_LENGTH)
+
+
+@pytest.fixture(name="reference_times")
+def fixture_reference_times(
+    analysis_times: NDArray, elapsed_forecast_duration: NDArray
+):
+    """Fixture that returns a numpy array representing reference_times.
+
+    Reference times consists of the unique values of analysis_times and
+    analysis_times + elapsed_forecast_duration.
+    """
+    reference_times = analysis_times[..., np.newaxis].repeat(
+        len(elapsed_forecast_duration) + 1, axis=1
+    )
+    reference_times[:, 1:] = reference_times[:, 1:] + elapsed_forecast_duration
+    return reference_times
+
+
+@pytest.fixture(name="unique_reference_times")
+def fixture_unique_reference_times(reference_times: NDArray):
+    return np.arange(reference_times.min(), reference_times.max() + 1)
 
 
 @pytest.fixture(name="meshgrid")
@@ -40,16 +69,14 @@ def fixture_gaussian_blob(meshgrid: MeshGrid):
 
 @pytest.fixture(name="moving_gaussian_blob")
 def fixture_moving_gaussian_blob(
-    elapsed_forecast_duration: NDArray, gaussian_blob: NDArray
+    unique_reference_times: NDArray, gaussian_blob: NDArray
 ):
     """Fixture of a 3D array representing a moving Gaussian blob."""
-    step_size = DOMAIN_WIDTH // len(elapsed_forecast_duration)
+    step_size = 2  # DOMAIN_WIDTH // len(unique_reference_times)
     return np.array(
         [
             np.roll(gaussian_blob, shift * step_size, axis=0)
-            for shift in elapsed_forecast_duration[
-                1:
-            ]  # Only produce data for forecast steps
+            for shift in unique_reference_times
         ]
     )
 
@@ -77,7 +104,7 @@ def fixture_ds_reference_1d(
 ) -> xr.Dataset:
     """Fixture that returns Dataset with 1d moving gaussian blob reference data."""
     data = moving_gaussian_blobs.reshape(
-        (len(elapsed_forecast_duration) - 1, -1, NFEATURES)
+        (len(elapsed_forecast_duration), -1, NFEATURES)
     )
     grid_index = np.arange(data.shape[1])
 
@@ -95,7 +122,7 @@ def fixture_ds_reference_1d(
         },
         coords={
             "analysis_time": [elapsed_forecast_duration[0]],
-            "elapsed_forecast_duration": elapsed_forecast_duration[1:],
+            "elapsed_forecast_duration": elapsed_forecast_duration,
             "grid_index": grid_index,
             "state_feature": [f"feature{i}" for i in np.arange(NFEATURES)],
         },
@@ -132,11 +159,45 @@ def fixture_ds_prediction_1d(ds_reference_1d: xr.Dataset) -> xr.Dataset:
 
 @pytest.fixture(name="ds_reference_2d")
 def fixture_ds_reference_2d(
-    elapsed_forecast_duration: NDArray,
+    unique_reference_times: NDArray,
     moving_gaussian_blobs: NDArray,
     meshgrid: MeshGrid,
 ) -> xr.Dataset:
-    """Fixture that returns Dataset 2d moving gaussian blob reference data."""
+    """Fixture that returns Dataset 2d moving gaussian blobs reference data."""
+    return xr.Dataset(
+        {
+            f"feature{i}": (
+                [
+                    "time",
+                    "x",
+                    "y",
+                ],
+                moving_gaussian_blobs[..., i],
+            )
+            for i in np.arange(NFEATURES)
+        },
+        coords={
+            "time": unique_reference_times,
+            "x": meshgrid.x[0, :],
+            "y": meshgrid.y[:, 0],
+        },
+    )
+
+
+@pytest.fixture(name="ds_reference_2d_relevant_times_and_aligned")
+def fixture_ds_reference_2d_relevant_times_and_aligned(
+    moving_gaussian_blobs: NDArray,
+    meshgrid: MeshGrid,
+    analysis_times: NDArray,
+    elapsed_forecast_duration: NDArray,
+    reference_times: NDArray,
+) -> xr.Dataset:
+    """Fixture that returns Dataset 2d moving gaussian blobs reference data.
+
+    The reference data is aligned with the prediction data and only contains
+    relevant times.
+    """
+    reference_times_flattened = reference_times[:, 1:].flatten()
     return xr.Dataset(
         {
             "state": (
@@ -147,12 +208,18 @@ def fixture_ds_reference_2d(
                     "y",
                     "state_feature",
                 ],
-                moving_gaussian_blobs[np.newaxis, ...],
+                moving_gaussian_blobs[reference_times_flattened, ...].reshape(
+                    len(analysis_times),
+                    len(elapsed_forecast_duration),
+                    *meshgrid.x[0, :].shape,
+                    *meshgrid.y[:, 0].shape,
+                    NFEATURES,
+                ),
             )
         },
         coords={
-            "analysis_time": [elapsed_forecast_duration[0]],
-            "elapsed_forecast_duration": elapsed_forecast_duration[1:],
+            "analysis_time": analysis_times,
+            "elapsed_forecast_duration": elapsed_forecast_duration,
             "x": meshgrid.x[0, :],
             "y": meshgrid.y[:, 0],
             "state_feature": [f"feature{i}" for i in np.arange(NFEATURES)],
@@ -161,15 +228,21 @@ def fixture_ds_reference_2d(
 
 
 @pytest.fixture(name="ds_prediction_2d")
-def fixture_ds_prediction_2d(ds_reference_2d: xr.Dataset) -> xr.Dataset:
+def fixture_ds_prediction_2d(
+    moving_gaussian_blobs: NDArray,
+    analysis_times: NDArray,
+    reference_times: NDArray,
+    elapsed_forecast_duration: NDArray,
+    meshgrid: MeshGrid,
+) -> xr.Dataset:
     """Fixture that returns Dataset 2d moving gaussian blob prediction data.
 
     The prediction data is the reference data with added noise and bias.
     """
-    noise = np.random.normal(0, 0.1, ds_reference_2d["state"].shape)
     # bias = np.random.normal(0, 0.1, ds_reference_2d["state"].shape)
+    noise = np.random.normal(0, 0.1, moving_gaussian_blobs.shape)
+    moving_gaussian_blobs += noise
 
-    data = ds_reference_2d["state"].values + noise  # + bias
     return xr.Dataset(
         {
             "state": (
@@ -180,8 +253,19 @@ def fixture_ds_prediction_2d(ds_reference_2d: xr.Dataset) -> xr.Dataset:
                     "y",
                     "state_feature",
                 ],
-                data,
+                np.array(
+                    [
+                        moving_gaussian_blobs[reference_times[forecast, 1:], ...]
+                        for forecast in range(NFORECASTS)
+                    ]
+                ),
             )
         },
-        coords=ds_reference_2d.coords,
+        coords={
+            "analysis_time": analysis_times,
+            "elapsed_forecast_duration": elapsed_forecast_duration,
+            "x": meshgrid.x[0, :],
+            "y": meshgrid.y[:, 0],
+            "state_feature": [f"feature{i}" for i in np.arange(NFEATURES)],
+        },
     )

@@ -2,6 +2,8 @@
 
 from typing import List, Optional
 
+import numpy as np
+import pandas as pd
 import xarray as xr
 
 xr.set_options(keep_attrs=True)
@@ -86,6 +88,7 @@ def calculate_error_per_gridpoint(
     include_persistence: bool
         Whether to calculate the error relative to persistence
     """
+
     # Calculate the error and rename the variable
     error = ds_prediction - ds_reference
     error = error.rename({"state": "error"})
@@ -101,6 +104,9 @@ def calculate_error_per_gridpoint(
         persistence_error = -diff_per_time_and_gridpoint(ds_reference)
         persistence_error = persistence_error.rename({"state": "persistence_error"})
         error = xr.merge([error, persistence_error])
+
+    # Take mean over all analysis times
+    error = error.mean("analysis_time")
 
     return error
 
