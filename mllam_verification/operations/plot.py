@@ -99,10 +99,10 @@ def plot_error_map(
     ds_max = ds_error.max()
     ds_min = ds_error.min()
 
-    # Loop over time and produce one plot per time
+    # Loop over elapsed_forecast_duration and produce one plot per elapsed_forecast_duration
     var: Hashable
-    time: xr.DataArray
-    for time in ds_error["time"]:
+    elapsed_forecast_duration: xr.DataArray
+    for elapsed_forecast_duration in ds_error["elapsed_forecast_duration"]:
         # Prepare the figure
         fig = plt.figure(figsize=(10, 5 * nrows), constrained_layout=True)
         gs = gridspec.GridSpec(nrows, ncols, figure=fig)
@@ -113,7 +113,10 @@ def plot_error_map(
             row = i // ncols
             col = i % ncols
             axes = fig.add_subplot(gs[row, col])
-            ds_error[var].isel(time=time).plot.pcolormesh(
+            ds_error[var].sel(
+                elapsed_forecast_duration=elapsed_forecast_duration,
+                analysis_time=0,
+            ).plot.pcolormesh(
                 x="x",
                 y="y",
                 cmap="bwr",
@@ -121,6 +124,8 @@ def plot_error_map(
                 vmin=ds_min[var],
                 vmax=ds_max[var],
             )
-            axes.set_title(f"{var} at time {time.values}")
+            axes.set_title(
+                f"{var} at elapsed_forecast_duration {elapsed_forecast_duration.values}"
+            )
 
-        yield fig, time
+        yield fig, elapsed_forecast_duration
