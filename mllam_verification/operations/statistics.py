@@ -54,6 +54,9 @@ def calculate_global_error(
         persistence_error = persistence_error.rename({"state": "persistence_error"})
         error = xr.merge([error, persistence_error])
 
+    # Take mean over all analysis times
+    error = error.mean("analysis_time")
+
     return error
 
 

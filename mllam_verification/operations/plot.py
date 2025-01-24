@@ -32,7 +32,7 @@ def plot_error_timeline(ds_error: xr.Dataset) -> plt.Figure:
 
     # Plot each variable in the dataset for every feature
     for var in ds_error.data_vars:
-        ds_error.sel(analysis_time=0)[var].plot.line(
+        ds_error[var].plot.line(
             ax=ax,
             x="elapsed_forecast_duration",
             hue="state_feature",
@@ -113,10 +113,9 @@ def plot_error_map(
             row = i // ncols
             col = i % ncols
             axes = fig.add_subplot(gs[row, col])
-            ds_error[var].sel(
+            ds_error.sel(
                 elapsed_forecast_duration=elapsed_forecast_duration,
-                analysis_time=0,
-            ).plot.pcolormesh(
+            )[var].plot.pcolormesh(
                 x="x",
                 y="y",
                 cmap="bwr",

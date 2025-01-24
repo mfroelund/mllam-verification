@@ -1,3 +1,6 @@
+"""Unit tests for the plot module."""
+
+import matplotlib.pyplot as plt
 import pytest
 import xarray as xr
 from mllam_verification.operations.plot import plot_error_map, plot_error_timeline
@@ -37,15 +40,15 @@ def fixture_error_per_gridpoint() -> xr.Dataset:
     ds = xr.Dataset(
         {
             "error": (
-                ["time", "x", "y"],
+                ["elapsed_forecast_duration", "x", "y"],
                 [[[0.1, 0.2], [0.3, 0.4]], [[0.5, 0.6], [0.7, 0.8]]],
             ),
             "persistence_error": (
-                ["time", "x", "y"],
+                ["elapsed_forecast_duration", "x", "y"],
                 [[[1.1, 1.2], [1.3, 1.4]], [[1.5, 1.6], [1.7, 1.8]]],
             ),
         },
-        coords={"time": [0, 1], "x": [0, 1], "y": [0, 1]},
+        coords={"elapsed_forecast_duration": [0, 1], "x": [0, 1], "y": [0, 1]},
     )
     # Add cell_methods attribute to data variables
     ds["error"].attrs["cell_methods"] = "grid_index: method1"
@@ -54,12 +57,14 @@ def fixture_error_per_gridpoint() -> xr.Dataset:
     return ds
 
 
-def test_plot_error_timeline(global_error_with_persistence):
+def test_plot_error_timeline(global_error_with_persistence: xr.Dataset):
     """Test producing a timeline plot of the global error."""
+    fig = plot_error_timeline(global_error_with_persistence)
+    assert isinstance(fig, plt.Figure)
 
-    plot_error_timeline(global_error_with_persistence)
 
-
-def test_plot_error_per_gridpoint(error_per_gridpoint):
+def test_plot_error_per_gridpoint(error_per_gridpoint: xr.Dataset):
     """Test producing a 2D plot of the error per gridpoint."""
-    plot_error_map(error_per_gridpoint)
+    for fig, elapsed_forecast_duration in plot_error_map(error_per_gridpoint):
+        assert isinstance(fig, plt.Figure)
+        assert elapsed_forecast_duration.size == 1
