@@ -2,8 +2,6 @@
 
 from typing import List, Optional
 
-import numpy as np
-import pandas as pd
 import xarray as xr
 
 xr.set_options(keep_attrs=True)
@@ -16,24 +14,56 @@ def calculate_global_error(
 
     If specified, calculate the error relative to persistence too.
 
+    The input datasets are assumed to have the following specifications:
+
+    Dimensions: [analysis_time, elapsed_forecast_duration, grid_index, state_feature]
+    Data variables:
+    - state [analysis_time, elapsed_forecast_duration, grid_index, state_feature]:
+    Coordinates:
+    - analysis_time:
+        the analysis time as a datetime object
+    - elapsed_forecast_duration:
+        the elapsed forecast duration as a timedelta object
+    - grid_index:
+        the index of the gridpoint
+    - state_feature:
+        the feature to calculate the error for, e.g. 2t, 2r, etc.
+
+    or
+
+    Dimensions: [analysis_time, elapsed_forecast_duration, x, y, state_feature]
+    Data variables:
+    - state [analysis_time, elapsed_forecast_duration, x, y, state_feature]:
+    Coordinates:
+    - analysis_time:
+        the analysis time as a datetime object
+    - elapsed_forecast_duration:
+        the elapsed forecast duration as a timedelta object
+    - x:
+        the x coordinate of the gridpoint
+    - y:
+        the y coordinate of the gridpoint
+    - state_feature:
+        the feature to calculate the error for, e.g. 2t, 2r, etc.
+
+    The error is averaged along the analysis_time dimension of the datasets.
     The error is returned as a dataset with the following specification:
 
+    Dimensions: [elapsed_forecast_duration]
     Data variables:
     - error [elapsed_forecast_duration]:
         the error between the prediction and reference datasets
+    - persistence_error [elapsed_forecast_duration], optional:
+        the persistence error calculated based on the reference datasets
     Coordinates:
     - elapsed_forecast_duration:
-        the elapsed forecast duration as a timedelta object
 
     Parameters:
     -----------
     ds_reference: xr.Dataset
-        The reference dataset to calculate global error against. Assumed to have
-        coordinates [time, grid_index] or [time, x, y].
+        The reference dataset to calculate global error against.
     ds_prediction: xr.Dataset
-        The prediction dataset to calculate global error off. Assumed to have
-        coordinates [analysis_time, elapsed_forecast_duration, grid_index] or
-        [analysis_time, elapsed_forecast_duration, x, y].
+        The prediction dataset to calculate global error of.
     include_persistence: bool
         Whether to calculate the error relative to persistence
     """
@@ -67,18 +97,36 @@ def calculate_error_per_gridpoint(
 
     If specified, calculate the error relative to persistence too.
 
-    The error is returned as a dataset with the following specification:
+    The input datasets are assumed to have the following specifications:
 
+    Dimensions: [analysis_time, elapsed_forecast_duration, x, y, state_feature]
     Data variables:
-    - error [elapsed_forecast_duration, x, y]:
-        the error between the prediction and reference datasets
+    - state [analysis_time, elapsed_forecast_duration, x, y, state_feature]:
     Coordinates:
+    - analysis_time:
+        the analysis time as a datetime object
     - elapsed_forecast_duration:
         the elapsed forecast duration as a timedelta object
     - x:
-        the x coordinate of the error
+        the x coordinate of the gridpoint
     - y:
-        the y coordinate of the error
+        the y coordinate of the gridpoint
+    - state_feature:
+        the feature to calculate the error for, e.g. 2t, 2r, etc.
+
+    The error is averaged along the analysis_time dimension of the datasets.
+    The error is returned as a dataset with the following specification:
+
+    Dimensions: [elapsed_forecast_duration, x, y]
+    Data variables:
+    - error [elapsed_forecast_duration, x, y]:
+        the error between the prediction and reference datasets
+    - persistence_error [elapsed_forecast_duration, x, y], optional:
+        the persistence error calculated based on the reference datasets
+    Coordinates:
+    - elapsed_forecast_duration
+    - x
+    - y
 
     Parameters:
     -----------

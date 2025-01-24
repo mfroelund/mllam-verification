@@ -115,8 +115,32 @@ The `output` section should contain the path to the output directory. This direc
 
 ## Expected Structure of the Datasets
 #### Reference Dataset
-The reference dataset should have coordinates [time, grid_index] (for 1D plots) or [time, x, y] (for 2D plots).
+The reference dataset should have coordinates [time, grid_index] (for 1D plots) or [time, x, y] (for 1D and 2D plots). The dataset should contain the variables for each feature to compare against the prediction dataset. An example of a reference dataset is shown below:
+
+```
+<xarray.Dataset>
+Dimensions:  (time: 100, x: 10, y: 10)
+Coordinates:
+  * time     (time) datetime64[ns] 2021-01-01T00:00:00 ... 2021-01-01T23:00:00
+  * x        (x) float64 0.0 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0
+  * y        (y) float64 0.0 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0
+Data variables:
+  feature1   (time, x, y) float64 ...
+  feature2   (time, x, y) float64 ...
+```
 
 #### Prediction Dataset
-The prediction dataset should have coordinates [analysis_time, elapsed_forecast_duration, grid_index] (for 1D plots) or [analysis_time, elapsed_forecast_duration, x, y] (for 2D plots). 
+The prediction dataset should have coordinates [analysis_time, elapsed_forecast_duration, grid_index, state_feature] (for 1D plots) or [analysis_time, elapsed_forecast_duration, x, y, state_feature] (for 1D and 2D plots). The dataset should contain one `state` data variable that contains all the features to compare against the reference dataset. An example of a prediction dataset is shown below:
+
+```
+<xarray.Dataset>
+Dimensions:                   (analysis_time: 100, elapsed_forecast_duration: 10, x: 10, y: 10, state_feature: 2)
+Coordinates:
+  * analysis_time             (analysis_time) datetime64[ns] 2021-01-01T00:00:00 ... 2021-01-01T23:00:00
+  * elapsed_forecast_duration (elapsed_forecast_duration) timedelta64[ns] 00:00:00 ... 09:00:00
+  * x                         (x) float64 0.0 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0
+  * y                         (y) float64 0.0 1.0 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0
+  * state_feature             (state_feature) <U8 'feature1' 'feature2'
+Data variables:
+  state                       (analysis_time, elapsed_forecast_duration, x, y, state_feature) float64 ...
 
