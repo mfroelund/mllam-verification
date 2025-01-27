@@ -25,7 +25,9 @@ def plot_error_timeline(ds_error: xr.Dataset) -> plt.Figure:
     nfeatures = len(ds_error["state_feature"])
     nvars = len(ds_error.data_vars)
     colors = plt.cm.tab10.colors
-    repeated_colors = np.tile(colors[:nfeatures], nvars).reshape((nvars * nfeatures, 3))
+    repeated_colors = np.tile(colors[:nfeatures], (nvars, 1)).reshape(
+        (nvars * nfeatures, 3)
+    )
     repeated_lines = ["-"] * nfeatures + ["--"] * nfeatures
     plot_style_cycler = plt.cycler(color=repeated_colors, linestyle=repeated_lines)
     ax.set_prop_cycle(plot_style_cycler)
