@@ -15,22 +15,23 @@ DOMAIN_WIDTH = 100
 NFEATURES = 5
 MeshGrid = collections.namedtuple("MeshGrid", "x y")
 FORECAST_LENGTH = 5
+FORECAST_SPATIAL_STEP = 15
 NFORECASTS = 3
 
 
-@pytest.fixture(name="analysis_times")
+@pytest.fixture(name="analysis_times", scope="session")
 def fixture_analysis_times():
     """Fixture that returns a numpy array representing analysis_times."""
     return np.arange(0, NFORECASTS * (2 * FORECAST_LENGTH), 2 * FORECAST_LENGTH)
 
 
-@pytest.fixture(name="elapsed_forecast_duration")
+@pytest.fixture(name="elapsed_forecast_duration", scope="session")
 def fixture_elapsed_forecast_duration():
     """Fixture that returns a numpy array representing elapsed_forecast_duration steps."""
     return np.arange(1, FORECAST_LENGTH)
 
 
-@pytest.fixture(name="reference_times")
+@pytest.fixture(name="reference_times", scope="session")
 def fixture_reference_times(
     analysis_times: NDArray, elapsed_forecast_duration: NDArray
 ):
@@ -46,20 +47,20 @@ def fixture_reference_times(
     return reference_times
 
 
-@pytest.fixture(name="unique_reference_times")
+@pytest.fixture(name="unique_reference_times", scope="session")
 def fixture_unique_reference_times(reference_times: NDArray) -> NDArray:
     """Fixture that returns a numpy array of unique reference times."""
     return np.arange(reference_times.min(), reference_times.max() + 1)
 
 
-@pytest.fixture(name="meshgrid")
+@pytest.fixture(name="meshgrid", scope="session")
 def fixture_meshgrid() -> Tuple[NDArray, NDArray]:
     """Fixture that returns a meshgrid of shape (DOMAIN_WIDTH, DOMAIN_WIDTH)."""
     index = np.arange(0, DOMAIN_WIDTH)
     return MeshGrid(*np.meshgrid(index, index))
 
 
-@pytest.fixture(name="gaussian_blob")
+@pytest.fixture(name="gaussian_blob", scope="session")
 def fixture_gaussian_blob(meshgrid: MeshGrid):
     """Fixture that returns a 2D Gaussian blob.
 
@@ -68,21 +69,20 @@ def fixture_gaussian_blob(meshgrid: MeshGrid):
     return np.exp(-((meshgrid.x - 50) ** 2 + (meshgrid.y - 50) ** 2) / (2 * 10**2))
 
 
-@pytest.fixture(name="moving_gaussian_blob")
+@pytest.fixture(name="moving_gaussian_blob", scope="session")
 def fixture_moving_gaussian_blob(
     unique_reference_times: NDArray, gaussian_blob: NDArray
 ):
     """Fixture of a 3D array representing a moving Gaussian blob."""
-    step_size = 2  # DOMAIN_WIDTH // len(unique_reference_times)
     return np.array(
         [
-            np.roll(gaussian_blob, shift * step_size, axis=0)
+            np.roll(gaussian_blob, shift * FORECAST_SPATIAL_STEP, axis=0)
             for shift in unique_reference_times
         ]
     )
 
 
-@pytest.fixture(name="moving_gaussian_blobs")
+@pytest.fixture(name="moving_gaussian_blobs", scope="session")
 def fixture_moving_gaussian_blobs(moving_gaussian_blob: NDArray):
     """Fixture of a 4D array representing multiple moving Gaussian blobs.
 
@@ -99,7 +99,7 @@ def fixture_moving_gaussian_blobs(moving_gaussian_blob: NDArray):
     ).transpose((1, 2, 3, 0))
 
 
-@pytest.fixture(name="ds_reference_1d")
+@pytest.fixture(name="ds_reference_1d", scope="session")
 def fixture_ds_reference_1d(
     unique_reference_times: NDArray, moving_gaussian_blobs: NDArray
 ) -> xr.Dataset:
@@ -124,7 +124,7 @@ def fixture_ds_reference_1d(
     )
 
 
-@pytest.fixture(name="moving_gaussian_blobs_per_reference_time_1d")
+@pytest.fixture(name="moving_gaussian_blobs_per_reference_time_1d", scope="session")
 def fixture_moving_gaussian_blobs_per_reference_time_1d(
     moving_gaussian_blobs: NDArray,
     reference_times: NDArray,
@@ -145,7 +145,7 @@ def fixture_moving_gaussian_blobs_per_reference_time_1d(
     )
 
 
-@pytest.fixture(name="ds_reference_1d_relevant_times_and_aligned")
+@pytest.fixture(name="ds_reference_1d_relevant_times_and_aligned", scope="session")
 def fixture_ds_reference_1d_relevant_times_and_aligned(
     moving_gaussian_blobs_per_reference_time_1d: NDArray,
     analysis_times: NDArray,
@@ -179,7 +179,7 @@ def fixture_ds_reference_1d_relevant_times_and_aligned(
     )
 
 
-@pytest.fixture(name="ds_prediction_1d")
+@pytest.fixture(name="ds_prediction_1d", scope="session")
 def fixture_ds_prediction_1d(
     analysis_times: NDArray,
     elapsed_forecast_duration: NDArray,
@@ -217,7 +217,7 @@ def fixture_ds_prediction_1d(
     )
 
 
-@pytest.fixture(name="ds_reference_2d")
+@pytest.fixture(name="ds_reference_2d", scope="session")
 def fixture_ds_reference_2d(
     unique_reference_times: NDArray,
     moving_gaussian_blobs: NDArray,
@@ -244,7 +244,7 @@ def fixture_ds_reference_2d(
     )
 
 
-@pytest.fixture(name="moving_gaussian_blobs_per_reference_time_2d")
+@pytest.fixture(name="moving_gaussian_blobs_per_reference_time_2d", scope="session")
 def fixture_moving_gaussian_blobs_per_reference_time_2d(
     moving_gaussian_blobs: NDArray, reference_times: NDArray
 ) -> NDArray:
@@ -263,7 +263,7 @@ def fixture_moving_gaussian_blobs_per_reference_time_2d(
     )[0]
 
 
-@pytest.fixture(name="ds_reference_2d_relevant_times_and_aligned")
+@pytest.fixture(name="ds_reference_2d_relevant_times_and_aligned", scope="session")
 def fixture_ds_reference_2d_relevant_times_and_aligned(
     moving_gaussian_blobs_per_reference_time_2d: NDArray,
     meshgrid: MeshGrid,
@@ -298,7 +298,7 @@ def fixture_ds_reference_2d_relevant_times_and_aligned(
     )
 
 
-@pytest.fixture(name="ds_prediction_2d")
+@pytest.fixture(name="ds_prediction_2d", scope="session")
 def fixture_ds_prediction_2d(
     moving_gaussian_blobs_per_reference_time_2d: NDArray,
     analysis_times: NDArray,

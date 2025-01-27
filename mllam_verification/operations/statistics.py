@@ -2,6 +2,7 @@
 
 from typing import List, Optional
 
+import scores.continuous as scc
 import xarray as xr
 
 xr.set_options(keep_attrs=True)
@@ -74,20 +75,35 @@ def calculate_global_error(
         ds_reference = ds_reference.stack(grid_index=["x", "y"])
 
     # Calculate the error and rename the variable
-    error = rmse_per_time(ds_prediction - ds_reference)
-    error = error.rename({"state": "error"})
+    ds_error = rmse(ds_prediction, ds_reference, reduce_dims=["grid_index"])
+    ds_error = ds_error.rename({"state": "error"})
 
     # Calculate the persistence error and merge with the error dataset
     if include_persistence:
-        persistence = diff_mean_per_time(ds_reference)
-        persistence_error = rmse_per_time(ds_prediction - persistence)
+        persistence_reference = ds_reference.isel(
+            elapsed_forecast_duration=slice(1, None)
+        )
+        persistence_forecast = ds_reference.isel(elapsed_forecast_duration=slice(0, -1))
+        persistence_forecast = persistence_forecast.assign_coords(
+            elapsed_forecast_duration=persistence_reference["elapsed_forecast_duration"]
+        )
+        persistence_error = rmse(
+            ds_prediction=persistence_forecast,
+            ds_reference=persistence_reference,
+            reduce_dims=["grid_index"],
+        )
         persistence_error = persistence_error.rename({"state": "persistence_error"})
-        error = xr.merge([error, persistence_error])
+        ds_error = xr.merge([ds_error, persistence_error])
 
     # Take mean over all analysis times
-    error = error.mean("analysis_time")
+    ds_error = ds_error.mean("analysis_time")
+    # Update cell_methods attributes
+    for _, da_var in ds_error.items():
+        da_var.attrs["cell_methods"] = " ".join(
+            [da_var.attrs["cell_methods"], "analysis_time: mean"]
+        )
 
-    return error
+    return ds_error
 
 
 def calculate_error_per_gridpoint(
@@ -141,8 +157,9 @@ def calculate_error_per_gridpoint(
     """
 
     # Calculate the error and rename the variable
-    error = ds_prediction - ds_reference
-    error = error.rename({"state": "error"})
+    ds_error = ds_prediction - ds_reference
+    ds_error = ds_error.rename({"state": "error"})
+    ds_error["error"].attrs["cell_methods"] = "all: diff"
 
     # Calculate the persistence error
     if include_persistence:
@@ -154,12 +171,17 @@ def calculate_error_per_gridpoint(
         # hence the minus sign.
         persistence_error = -diff_per_time_and_gridpoint(ds_reference)
         persistence_error = persistence_error.rename({"state": "persistence_error"})
-        error = xr.merge([error, persistence_error])
-
+        persistence_error["persistence_error"].attrs["cell_methods"] = "all: diff"
+        ds_error = xr.merge([ds_error, persistence_error])
     # Take mean over all analysis times
-    error = error.mean("analysis_time")
+    ds_error = ds_error.mean("analysis_time")
+    # Update cell_methods attributes
+    for _, da_var in ds_error.items():
+        da_var.attrs["cell_methods"] = " ".join(
+            [da_var.attrs.get("cell_methods", ""), "analysis_time: mean"]
+        )
 
-    return error
+    return ds_error
 
 
 def compute_pipeline_statistic(
@@ -302,19 +324,21 @@ def std_per_gridpoint(ds: xr.Dataset):
     return compute_pipeline_statistic(ds, stats_op="std", stats_dims="time")
 
 
-def rmse_per_time(ds: xr.Dataset) -> xr.Dataset:
+def rmse(
+    ds_prediction: xr.Dataset, ds_reference: xr.Dataset, reduce_dims: List["str"]
+) -> xr.Dataset:
     """Compute the root mean squared error across grid_index for all variables.
     Args:
         ds (xr.Dataset): Input dataset
     Returns:
         xr.Dataset: Dataset with the computed statistical variables
     """
-    ds_rmse_per_time = mean_per_time((ds) ** 2) ** 2
+    ds_rmse = scc.rmse(ds_prediction, ds_reference, reduce_dims=reduce_dims)
     # Update cell_methods attributes
-    for _, da_var in ds_rmse_per_time.items():
-        da_var.attrs["cell_methods"] = "grid_index: root_mean_square"
+    for _, da_var in ds_rmse.items():
+        da_var.attrs["cell_methods"] = ",".join(reduce_dims) + ": root_mean_square"
 
-    return ds_rmse_per_time
+    return ds_rmse
 
 
 def diff_mean(ds: xr.Dataset):

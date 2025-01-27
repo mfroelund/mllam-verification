@@ -13,8 +13,10 @@ dependencies = [
     "matplotlib>=3.9.4",
     "netCDF4>=1.7.2",
     "click>=8.1.8",
+    "scores>=2.0.0",
+    "PyQt5>=5.15.11",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "MIT"}
 
